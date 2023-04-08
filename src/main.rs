@@ -242,7 +242,7 @@ async fn main() {
 
 fn window_conf() -> Conf {
     Conf {
-        window_title: "Platformer Game".to_owned(),
+        window_title: "Flappy Quad".to_owned(),
         window_width: 640,
         window_height: 480,
         window_resizable: true,
