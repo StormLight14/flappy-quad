@@ -23,7 +23,6 @@ struct Player {
     rotation: f32,
 }
 
-
 impl Player {
     fn new(texture: Texture2D, pos: Vec2, pipes: Vec<Pipe>) -> Self {
         let size = Vec2::from_array([texture.width(), texture.height()]);
@@ -41,7 +40,7 @@ impl Player {
     }
 
     fn update(&mut self, delta: f32) {
-        if is_key_pressed(KeyCode::Space) || is_mouse_button_pressed(MouseButton::Left){
+        if is_key_pressed(KeyCode::Space) || is_mouse_button_pressed(MouseButton::Left) {
             self.gravity = -PLAYER_JUMP_STRENGTH;
         }
 
@@ -67,7 +66,6 @@ impl Player {
                 self.is_alive = false;
             }
         }
-        
     }
 
     fn draw(&self) {
@@ -83,7 +81,7 @@ impl Player {
                 flip_x: false,
                 flip_y: false,
                 ..Default::default()
-            }
+            },
         );
     }
 }
@@ -111,7 +109,7 @@ impl Pipe {
             passed_player: false,
         }
     }
-    fn update(&mut self, delta: f32) {        
+    fn update(&mut self, delta: f32) {
         // movement code
         self.pos.x -= self.speed * delta;
 
@@ -124,17 +122,28 @@ impl Pipe {
     }
 }
 
-fn draw_text(pos: (f32, f32), text: &str, font: Font, font_size: u16, font_scale: f32, color: Color) {
-    
+fn draw_text(
+    pos: (f32, f32),
+    text: &str,
+    font: Font,
+    font_size: u16,
+    font_scale: f32,
+    color: Color,
+) {
     let (x, y) = pos;
     let text_dim = measure_text(text, Some(font), font_size, font_scale);
 
     draw_text_ex(
-        
         text,
         x,
         y,
-        TextParams { font: font, font_size: font_size, font_scale: font_scale, color: color, ..Default::default()},
+        TextParams {
+            font: font,
+            font_size: font_size,
+            font_scale: font_scale,
+            color: color,
+            ..Default::default()
+        },
     );
 }
 
@@ -144,7 +153,6 @@ fn draw_title_text(text: &str, font: Font) {
         text,
         screen_width() * 0.5f32 - text_dim.width * 0.5f32,
         screen_height() * 0.5f32 - text_dim.height * 0.5f32,
-
         TextParams {
             font: font,
             font_size: 25,
@@ -158,7 +166,11 @@ fn add_pipes(mut pipes: Vec<Pipe>, texture: Texture2D, speed: f32) -> Vec<Pipe> 
     let gap_size = rand::gen_range(120f32, 160f32);
     let gap_pos = rand::gen_range(-220f32, 0f32);
     let pipe1 = Pipe::new(texture, Vec2::from_array([700f32, gap_pos]), speed);
-    let pipe2 = Pipe::new(texture, Vec2::from_array([pipe1.pos.x, pipe1.pos.y + pipe1.size.y + gap_size]), speed);
+    let pipe2 = Pipe::new(
+        texture,
+        Vec2::from_array([pipe1.pos.x, pipe1.pos.y + pipe1.size.y + gap_size]),
+        speed,
+    );
     pipes.push(pipe1);
     pipes.push(pipe2);
     pipes
@@ -171,9 +183,7 @@ async fn main() {
 
     let main_font = load_ttf_font("res/fonts/minecraftia.ttf").await.unwrap();
     let player_texture = load_texture("res/player/player.png").await.unwrap();
-    let pipe_texture = load_texture("res/pipe/pipe-1.png")
-        .await
-        .unwrap();
+    let pipe_texture = load_texture("res/pipe/pipe-1.png").await.unwrap();
 
     let mut score: f32 = 0.0;
     let mut pipe_speed = PIPE_SPEED;
@@ -211,22 +221,27 @@ async fn main() {
                     pipe.draw();
                 }
 
-                draw_text((20f32, 50f32), &format!("Score: {}", score), main_font, 20, 1f32, Color::new(0.0, 0.0, 0.0, 1.0));
+                draw_text(
+                    (20f32, 50f32),
+                    &format!("Score: {}", score),
+                    main_font,
+                    20,
+                    1f32,
+                    Color::new(0.0, 0.0, 0.0, 1.0),
+                );
 
                 if counter == 200 {
                     pipes = add_pipes(pipes, pipe_texture, pipe_speed);
                     counter = 0;
                 }
                 counter += 1;
-
-                
-            },
+            }
             GameState::MainMenu => {
                 if is_key_pressed(KeyCode::Space) || is_mouse_button_pressed(MouseButton::Left) {
                     current_state = GameState::Playing;
                 }
                 draw_title_text("Click or press Space to start.", main_font)
-            },
+            }
             GameState::Dead => {
                 if is_key_pressed(KeyCode::Space) || is_mouse_button_pressed(MouseButton::Left) {
                     current_state = GameState::Playing;
