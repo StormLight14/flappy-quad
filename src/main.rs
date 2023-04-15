@@ -1,125 +1,14 @@
 use macroquad::prelude::*;
 
+mod object;
+use object::*;
+
 const PIPE_SPEED: f32 = 500f32;
-const PLAYER_JUMP_STRENGTH: f32 = 400f32;
-const MAX_GRAVITY: f32 = 2500f32;
-const GRAVITY_ACCELERATION: f32 = 700f32;
 
 enum GameState {
     MainMenu,
     Playing,
     Dead,
-}
-
-#[derive(Debug, Clone)]
-struct Player {
-    texture: Texture2D,
-    pos: Vec2,
-    size: Vec2,
-    gravity: f32,
-    pipes: Vec<Pipe>,
-    rect: Rect,
-    is_alive: bool,
-    rotation: f32,
-}
-
-impl Player {
-    fn new(texture: Texture2D, pos: Vec2, pipes: Vec<Pipe>) -> Self {
-        let size = Vec2::from_array([texture.width(), texture.height()]);
-
-        Self {
-            texture: texture,
-            pos: pos,
-            size: Vec2::from_array([texture.width(), texture.height()]),
-            gravity: 0f32,
-            pipes: pipes,
-            rect: Rect::new(pos.x, pos.y, size.x, size.y),
-            is_alive: true,
-            rotation: 0f32,
-        }
-    }
-
-    fn update(&mut self, delta: f32) {
-        if is_key_pressed(KeyCode::Space) || is_mouse_button_pressed(MouseButton::Left) {
-            self.gravity = -PLAYER_JUMP_STRENGTH;
-        }
-
-        if self.gravity < MAX_GRAVITY {
-            self.gravity += GRAVITY_ACCELERATION * delta;
-        } else {
-            self.gravity = MAX_GRAVITY;
-        }
-
-        self.rotation = (self.gravity / 250f32).sin() * 0.5;
-        self.pos.y += self.gravity * delta;
-
-        self.rect.x = self.pos.x;
-        self.rect.y = self.pos.y;
-
-        if self.pos.y > screen_height() - self.size.y {
-            self.pos.y = screen_height() - self.size.y;
-            self.gravity = 0f32;
-            self.is_alive = false;
-        }
-        for pipe in self.pipes.iter() {
-            if self.rect.overlaps(&pipe.rect) {
-                self.is_alive = false;
-            }
-        }
-    }
-
-    fn draw(&self) {
-        draw_texture_ex(
-            self.texture,
-            self.pos.x,
-            self.pos.y,
-            Color::new(1.0, 1.0, 1.0, 1.0),
-            DrawTextureParams {
-                dest_size: Some(self.size),
-                source: Some(Rect::new(0.0, 0.0, self.size.x, self.size.y)),
-                rotation: self.rotation,
-                flip_x: false,
-                flip_y: false,
-                ..Default::default()
-            },
-        );
-    }
-}
-
-#[derive(Clone, Debug)]
-struct Pipe {
-    texture: Texture2D,
-    pos: Vec2,
-    size: Vec2,
-    rect: Rect,
-    speed: f32,
-    passed_player: bool,
-}
-
-impl Pipe {
-    fn new(texture: Texture2D, pos: Vec2, speed: f32) -> Self {
-        let size = Vec2::from_array([texture.width(), texture.height()]);
-
-        Self {
-            texture: texture,
-            pos: pos,
-            size: size,
-            rect: Rect::new(pos.x, pos.y, size.x, size.y),
-            speed: speed,
-            passed_player: false,
-        }
-    }
-    fn update(&mut self, delta: f32) {
-        // movement code
-        self.pos.x -= self.speed * delta;
-
-        // after movement update rect
-        self.rect.x = self.pos.x;
-        self.rect.y = self.pos.y;
-    }
-    fn draw(&self) {
-        draw_texture(self.texture, self.pos.x, self.pos.y, WHITE);
-    }
 }
 
 fn draw_text(
@@ -131,7 +20,7 @@ fn draw_text(
     color: Color,
 ) {
     let (x, y) = pos;
-    let text_dim = measure_text(text, Some(font), font_size, font_scale);
+    //let text_dim = measure_text(text, Some(font), font_size, font_scale);
 
     draw_text_ex(
         text,
@@ -162,10 +51,16 @@ fn draw_title_text(text: &str, font: Font) {
     )
 }
 
-fn add_pipes(mut pipes: Vec<Pipe>, texture: Texture2D, speed: f32) -> Vec<Pipe> {
-    let gap_size = rand::gen_range(120f32, 160f32);
-    let gap_pos = rand::gen_range(-220f32, 0f32);
-    let pipe1 = Pipe::new(texture, Vec2::from_array([700f32, gap_pos]), speed);
+fn add_pipes(mut pipes: Vec<Pipe>, texture: Texture2D, speed: f32, gap_scale: f32) -> Vec<Pipe> {
+    let pipe_height = texture.height();
+
+    let gap_size = rand::gen_range(120f32 * gap_scale, 160f32 * gap_scale);
+    let gap_pos = rand::gen_range(
+        screen_height() * 0.2 - pipe_height,
+        screen_height() * 0.7 - pipe_height,
+    );
+
+    let pipe1 = Pipe::new(texture, Vec2::from_array([screen_width(), gap_pos]), speed);
     let pipe2 = Pipe::new(
         texture,
         Vec2::from_array([pipe1.pos.x, pipe1.pos.y + pipe1.size.y + gap_size]),
@@ -191,7 +86,24 @@ async fn main() {
     let player_pos = Vec2::from_array([100f32, 100f32]);
     let mut player = Player::new(player_texture, player_pos, pipes.clone());
 
-    let mut counter = 50;
+    let mut place_counter = 50;
+    let mut max_counter = 200;
+    let mut gap_scale: f32 = 1.0;
+
+    if screen_height() <= 700f32 {
+        max_counter = 200;
+        gap_scale = 1f32;
+        println!("200");
+    } else if screen_height() >= 701f32 && screen_height() <= 900f32 {
+        println!("250");
+        gap_scale = 1.1;
+        max_counter = 250;
+    } else if screen_height() >= 901f32 && screen_height() <= 1500f32 {
+        println!("300");
+        max_counter = 300;
+        gap_scale = 1.2;
+    }
+
     loop {
         clear_background(WHITE);
         match current_state {
@@ -210,7 +122,7 @@ async fn main() {
                     if pipe.pos.x < player.pos.x && pipe.passed_player == false {
                         pipe.passed_player = true;
                         score += 0.5;
-                        pipe_speed += 2f32;
+                        pipe_speed += 4f32;
                     }
                 }
                 pipes.retain(|pipe| pipe.pos.x > 0f32 - pipe.size.x);
@@ -230,11 +142,11 @@ async fn main() {
                     Color::new(0.0, 0.0, 0.0, 1.0),
                 );
 
-                if counter == 200 {
-                    pipes = add_pipes(pipes, pipe_texture, pipe_speed);
-                    counter = 0;
+                if place_counter >= max_counter {
+                    pipes = add_pipes(pipes, pipe_texture, pipe_speed, gap_scale);
+                    place_counter = 0;
                 }
-                counter += 1;
+                place_counter += 1;
             }
             GameState::MainMenu => {
                 if is_key_pressed(KeyCode::Space) || is_mouse_button_pressed(MouseButton::Left) {
